@@ -1,6 +1,3 @@
-[[mangosonlinux20230209]]\\
-[[wowadmin20230209]]\\
-
 ====== MaNGOS on Linux 20230209 ======
 
 List of steps, to make MaNGOS run on Linux. (Version 20230209)\\
