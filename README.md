@@ -8,4 +8,4 @@ If you only want the restarter, get the wowadmin-file.
 If you want the whole manual, get the mangos on linux file.
 If you want to have a website where accounts can be created, 
 get the Bropack from https://www.ownedcore.com/forums/world-of-warcraft/world-of-warcraft-emulator-servers/wow-emu-general-releases/613280-elysium-core-1-12-repack-including-mmaps-optional-vendors.html
-and also the bropack-mods.
+and also the bropack-mod.
