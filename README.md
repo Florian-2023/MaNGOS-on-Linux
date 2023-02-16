@@ -22,3 +22,6 @@ https://www.ownedcore.com/forums/world-of-warcraft/world-of-warcraft-emulator-se
 and also the bropack-mod.
 
 Some other files that can be useful will be put here too.
+
+info.php, index.php and websiteconfig.php are modded files from the Bropack-website.
+Account creation can now be locked, the info-page now shows the area where players are and can do autorefresh.
