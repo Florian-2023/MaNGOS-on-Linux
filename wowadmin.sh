@@ -310,13 +310,21 @@ case "$1" in
         databasesbackup
     ;;
     *)
-        echo "Usage:"
-        echo $SCRIPT_FULLPATH" start|restart|stop|status|backup "
+        echo " Valid options:"
+        echo " $SCRIPT_FULLPATH start|restart|stop|status|backup "
         usage
         screen -list
-        read -p "Press [Enter] to connect or [Ctrl] + C to quit."
-        screen -r wowserver
-    ;;
+        echo " "
+        read -p " Type Enter to connect or any other key to quit." -n 1 -r
+        if [[ ! $REPLY == "" ]]
+        then
+            echo " Bye!"
+            exit 0
+        fi
+        screen -r wowserver 
+        echo " Bye, bye!"
+        exit 0
+	    ;;
 esac
 
 # the end
