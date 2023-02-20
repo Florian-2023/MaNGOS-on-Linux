@@ -321,7 +321,7 @@ case "$1" in
             echo " Bye!"
             exit 0
         fi
-        screen -r wowserver 
+        screen -r $SCREEN_NAME 
         echo " Bye, bye!"
         exit 0
 	    ;;
