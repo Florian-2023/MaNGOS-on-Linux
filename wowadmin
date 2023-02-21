@@ -316,15 +316,22 @@ case "$1" in
         screen -list
         echo " "
         read -p " Type Enter to connect or any other key to quit." -n 1 -r
-        if [[ ! $REPLY == "" ]]
+        if [[ $REPLY == "" ]]
         then
+            screen -r $SCREEN_NAME 
+            if [ $? = 1 ]
+            then
+                echo " Start $SCREEN_NAME with $SCRIPT_FULLPATH start"
+                echo " "
+                exit 1
+            fi    
+            echo " Have a nice day!"
+            echo " "
+        else
             echo " Bye!"
-            exit 0
+            echo " "
         fi
-        screen -r $SCREEN_NAME 
-        echo " Bye, bye!"
-        exit 0
-	    ;;
+    ;;
 esac
 
 # the end
