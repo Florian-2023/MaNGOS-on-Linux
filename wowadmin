@@ -190,32 +190,35 @@ databasesbackup()
 {
     checkdbserver
     checkworldserver
-    echo "Starting backup..."
-    if [[ $CHARACTERS == "1" ]];
-	then
-            /usr/bin/mysqldump --user=$DATABASEUSER --password=$DATABASEPASSWORD \
-                 characters --single-transaction --quick --lock-tables=false \
-                 > $DATABASEBACKUPSDIR/$(hostname)_characters_bu-$(date +%Y%m%d_%Hh%M).sql
+    echo " Starting backup..."
+    BACKUP_TIME=$(date +%Y%m%d_%Hh%M)
+    if [[ $CHARACTERS == "1" ]]
+    then
+        /usr/bin/mysqldump --user=$DATABASEUSER --password=$DATABASEPASSWORD \
+             characters --single-transaction --quick --lock-tables=false \
+             > $DATABASEBACKUPS_DIR/$(hostname)_characters_bu-$BACKUP_TIME.sql
     fi
-    if [[ $LOGS == "1" ]];
-	then
-            /usr/bin/mysqldump --user=$DATABASEUSER --password=$DATABASEPASSWORD \
-                logs --single-transaction --quick --lock-tables=false \
-                > $DATABASEBACKUPSDIR/$(hostname)_logs_______bu_$(date +%Y%m%d_%Hh%M).sql
+
+    if [[ $LOGS == "1" ]]
+    then
+        /usr/bin/mysqldump --user=$DATABASEUSER --password=$DATABASEPASSWORD \
+            logs --single-transaction --quick --lock-tables=false \
+            > $DATABASEBACKUPS_DIR/$(hostname)_logs_______bu_$BACKUP_TIME.sql
     fi
-    if [[ $REALMD == "1" ]];
-	then
-            /usr/bin/mysqldump --user=$DATABASEUSER --password=$DATABASEPASSWORD \
-                realmd --single-transaction --quick --lock-tables=false \
-                > $DATABASEBACKUPSDIR/$(hostname)_realmd_____bu_$(date +%Y%m%d_%Hh%M).sql
+    if [[ $REALMD == "1" ]]
+    then
+        /usr/bin/mysqldump --user=$DATABASEUSER --password=$DATABASEPASSWORD \
+            realmd --single-transaction --quick --lock-tables=false \
+            > $DATABASEBACKUPS_DIR/$(hostname)_realmd_____bu_$BACKUP_TIME.sql
     fi
-    if [[ $MANGOS = "1" ]];
-	then
-            /usr/bin/mysqldump --user=$DATABASEUSER --password=$DATABASEPASSWORD \
-                mangos --single-transaction --quick --lock-tables=false \
-                > $DATABASEBACKUPSDIR/$(hostname)_mangos_____bu_$(date +%Y%m%d_%Hh%M).sql
+
+    if [[ $MANGOS = "1" ]]
+    then
+        /usr/bin/mysqldump --user=$DATABASEUSER --password=$DATABASEPASSWORD \
+            mangos --single-transaction --quick --lock-tables=false \
+            > $DATABASEBACKUPS_DIR/$(hostname)_mangos_____bu_$BACKUP_TIME.sql
     fi
-    echo "Backup finished!"
+    echo " The $BACKUP_TIME Backup has finished!"
 }
 
 checkservers()
