@@ -95,8 +95,8 @@ then
     echo "https://en.wikipedia.org/wiki/GNU_Screen"
     exit
 fi
-if [ ! -d "$DATABASEBACKUPSDIR" ]; then
-   echo "$DATABASEBACKUPSDIR does not exist."
+if [ ! -d "$DATABASEBACKUPS_DIR" ]; then
+   echo "$DATABASEBACKUPS_DIR does not exist."
    exit
 fi
 if [ ! -d "$RESTARTERLOGS_DIR" ]; then
