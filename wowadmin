@@ -22,7 +22,7 @@ DATABASEUSER=mangos
 # The password of the databaseadmin who can make backups
 DATABASEPASSWORD=mangos
 # the directory where the backups are stored
-DATABASEBACKUPSDIR=/opt/mangos/databasebackups
+DATABASEBACKUPS_DIR=/opt/mangos/databasebackups
 
 #Database to be backupped:
 # Set to 1 for backup
