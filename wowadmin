@@ -190,13 +190,21 @@ databasesbackup()
 {
     checkdbserver
     checkworldserver
-    echo " Starting backup..."
     BACKUP_TIME=$(date +%Y%m%d_%Hh%M)
+    echo " Starting the $BACKUP_TIME backup..."
     if [[ $CHARACTERS == "1" ]]
     then
         /usr/bin/mysqldump --user=$DATABASEUSER --password=$DATABASEPASSWORD \
              characters --single-transaction --quick --lock-tables=false \
              > $DATABASEBACKUPS_DIR/$(hostname)_characters_bu-$BACKUP_TIME.sql
+        if [[ ! -e $DATABASEBACKUPS_DIR/$(hostname)_characters_bu-$BACKUP_TIME.sql ]]
+        then
+            clear
+            echo " For some reason (disk full?) $DATABASEBACKUPS_DIR/$(hostname)_characters_bu-$BACKUP_TIME.sql could not be created."
+            echo " Please check and then run sudo $SCRIPT_FULLPATH backup again."
+            exit 1
+        fi
+        echo " Created $DATABASEBACKUPS_DIR/$(hostname)_characters_bu-$BACKUP_TIME.sql"
     fi
 
     if [[ $LOGS == "1" ]]
@@ -204,12 +212,29 @@ databasesbackup()
         /usr/bin/mysqldump --user=$DATABASEUSER --password=$DATABASEPASSWORD \
             logs --single-transaction --quick --lock-tables=false \
             > $DATABASEBACKUPS_DIR/$(hostname)_logs_______bu_$BACKUP_TIME.sql
+        if [[ ! -e $DATABASEBACKUPS_DIR/$(hostname)_logs_______bu_$BACKUP_TIME.sql ]]
+        then
+            clear
+            echo " For some reason (disk full?) $DATABASEBACKUPS_DIR/$(hostname)_logs_______bu_$BACKUP_TIME.sql could not be created."
+            echo " Please check and then run sudo $SCRIPT_FULLPATH backup again."
+            exit 1
+        fi
+        echo " Created $DATABASEBACKUPS_DIR/$(hostname)_logs_______bu_$BACKUP_TIME.sql"
     fi
+
     if [[ $REALMD == "1" ]]
     then
         /usr/bin/mysqldump --user=$DATABASEUSER --password=$DATABASEPASSWORD \
             realmd --single-transaction --quick --lock-tables=false \
             > $DATABASEBACKUPS_DIR/$(hostname)_realmd_____bu_$BACKUP_TIME.sql
+        if [[ ! -e $DATABASEBACKUPS_DIR/$(hostname)_realmd_____bu_$BACKUP_TIME.sql ]]
+        then
+            clear
+            echo " For some reason (disk full?) $DATABASEBACKUPS_DIR/$(hostname)_realmd_____bu_$BACKUP_TIME.sql could not be created."
+            echo " Please check and then run sudo $SCRIPT_FULLPATH backup again."
+            exit 1
+        fi
+        echo " Created $DATABASEBACKUPS_DIR/$(hostname)_realmd_____bu_$BACKUP_TIME.sql"
     fi
 
     if [[ $MANGOS = "1" ]]
@@ -217,6 +242,14 @@ databasesbackup()
         /usr/bin/mysqldump --user=$DATABASEUSER --password=$DATABASEPASSWORD \
             mangos --single-transaction --quick --lock-tables=false \
             > $DATABASEBACKUPS_DIR/$(hostname)_mangos_____bu_$BACKUP_TIME.sql
+        if [[ ! -e $DATABASEBACKUPS_DIR/$(hostname)_mangos_____bu_$BACKUP_TIME.sql ]]
+        then
+            clear
+            echo " For some reason (disk full?) $DATABASEBACKUPS_DIR/$(hostname)_mangos_____bu_$BACKUP_TIME.sql could not be created."
+            echo " Please check and then run sudo $SCRIPT_FULLPATH backup again."
+            exit 1
+        fi
+        echo " Created $DATABASEBACKUPS_DIR/$(hostname)_mangos_____bu_$BACKUP_TIME.sql"
     fi
     echo " The $BACKUP_TIME Backup has finished!"
 }
