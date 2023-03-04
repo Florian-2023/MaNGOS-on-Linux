@@ -2,7 +2,7 @@
 
 # the introduction:
 ###################################################################################################
-# MaNGOS server start | restart | stop script. Version: 2023/02/17-16h00
+# MaNGOS server start | restart | stop script. Version: 2023/03/04-16h00
 # Provides a means to (auto-re)start the login- and world-servers while
 # giving access to the console and safely run them as a unprivileged user (mangos)
 # in one screen that combines windows for both servers and also a task-manager.
@@ -15,46 +15,49 @@
 #
 #SETTINGS (with sane defaults):
 
+# To run the servers:
 # The unprivileged user that will run the servers
-RUNAS_USER=mangos
+RunAs_User=mangos
+
+# The directory that holds your loginserver binary
+LoginServer_Dir=/opt/mangos/bin
+# The name of your loginserver binary (realmd)
+LoginServer_Bin=realmd
+# The directory that holds your worldserver binary
+WorldServer_Dir=/opt/mangos/bin
+# The name of your worldserver binary (mangosd)
+WorldServer_Bin=mangosd
+
+# To make the backups:
+# The service name of the database server e.g. mariadb
+DatabaseServer=mariadb
+
 # The username of the databaseadmin who can make backups
-DATABASEUSER=mangos
+DatabaseUser=mangos
 # The password of the databaseadmin who can make backups
-DATABASEPASSWORD=mangos
-# the directory where the backups are stored
-DATABASEBACKUPS_DIR=/opt/mangos/databasebackups
+DatabasePassword=mangos
+# the directory where the backups will be stored
+DatabaseBackups_Dir=/opt/mangos/databasebackups
 
 #Database to be backupped:
 # Set to 1 for backup
 # or 0 for no backup
-CHARACTERS=1
-LOGS=1
-REALMD=1
-MANGOS=0
-
-
-# The directory that holds your loginserver binary
-LOGINSERVER_DIR=/opt/mangos/bin
-# The name of your loginserver binary (realmd)
-LOGINSERVER_BIN=realmd
-# The directory that holds your worldserver binary
-WORLDSERVER_DIR=/opt/mangos/bin
-# The name of your worldserver binary (mangosd)
-WORLDSERVER_BIN=mangosd
+characters=1
+logs=1
+realmd=1
+mangos=0
 
 
 # The directory that will hold the restarter's logfiles
-RESTARTERLOGS_DIR=/opt/mangos/logs
+RestarterLogs_Dir=/opt/mangos/logs
 
-# The service name of the database server e.g. mariadb
-DATABASESERVER=mariadb
 
 # The name for the screen that the servers will run in
-SCREEN_NAME=wowserver
+Screen_Name=wowserver
 # The title for the window that the loginserver runs in
-LOGINSERVER_TITLE=Realmd
+LoginServer_Title=realmd
 # The title for the window that the worldserver runs in
-WORLDSERVER_TITLE=Mangosd
+WorldServer_Title=mangosd
 
 ###################################################################################################
 ####################### No changes needed below this line #########################################
@@ -63,50 +66,65 @@ WORLDSERVER_TITLE=Mangosd
 # some variables are needed:
 export SHELL=/bin/bash
 
-SCRIPT_FULLPATH=$(cd `dirname "${BASH_SOURCE[0]}"` && pwd -P)/`basename "${BASH_SOURCE[0]}"`
-SCRIPT_DIR=$(cd `dirname "${BASH_SOURCE[0]}"` && pwd -P)
-SCRIPT_NAME=$(basename "${BASH_SOURCE[0]}")
+Script_FullPath=$(cd `dirname "${BASH_SOURCE[0]}"` && pwd -P)/`basename "${BASH_SOURCE[0]}"`
+Script_Dir=$(cd `dirname "${BASH_SOURCE[0]}"` && pwd -P)
+Script_Name=$(basename "${BASH_SOURCE[0]}")
 
-# Check if all commands and directories can be found:
-if ! command -v $LOGINSERVER_DIR/$LOGINSERVER_BIN &> /dev/null
+
+# This script must be run with sudo or as root.
+if [ "$(id -u)" -ne 0 ]
 then
-    echo $LOGINSERVER_BIN" could not be found in "$LOGINSERVER_DIR
-    exit
-fi
-if ! command -v $WORLDSERVER_DIR/$WORLDSERVER_BIN &> /dev/null
-then
-    echo $WORLDSERVER_BIN" could not be found in "$WORLDSERVER_DIR
-    exit
-fi
-if ! command -v $DATABASESERVER &> /dev/null
-then
-    echo "$DATABASESERVER could not be found."
-    exit
-fi
-if ! command -v mysqldump &> /dev/null
-then
-    echo "mysqldump could not be found."
-    exit
-fi
-if ! command -v screen &> /dev/null
-then
-    echo "screen could not be found."
-    echo "Please install screen"
-    echo "https://en.wikipedia.org/wiki/GNU_Screen"
-    exit
-fi
-if [ ! -d "$DATABASEBACKUPS_DIR" ]; then
-   echo "$DATABASEBACKUPS_DIR does not exist."
-   exit
-fi
-if [ ! -d "$RESTARTERLOGS_DIR" ]; then
-   echo "$RESTARTERLOGS_DIR does not exist."
-   exit
+    echo " "
+    echo " This script will run the server as an unpriveliged user,"
+    echo " therefore it has to be run with sudo or as root."
+    echo " Please run sudo $Script_FullPath or as root."
+    echo " "
+    exit 1
 fi
 
+
+# the subroutines:
+
+checksettings()
+{
+    echo " "
+    echo " Please check the settings at the top of this script with an editor "
+    echo " and make the necessary changes."
+    echo " Then run sudo $Script_FullPath again when ready."
+    echo " "
+}
+
+loginserver-restarter()
+{
+    while I=*
+    do
+        sudo -u $RunAs_User $LoginServer_Dir/$LoginServer_Bin
+        NOW=$(date +%Y-%m-%d_%Hh%Mm%Ss_%N)
+        echo $NOW $LoginServer_Bin stopped, restarting! | tee -a $RestarterLogs_Dir/$Script_Name-$LoginServer_Bin.log
+        pid=`ps ax | awk '($5 ~ /$LoginServer_Bin/) { print $1 }'`
+        wait $pid
+        sleep 3
+    done
+}
+
+worldserver-restarter()
+{
+    while I=1
+    do
+       sudo -u $RunAs_User $WorldServer_Dir/$WorldServer_Bin
+        NOW=$(date +%Y-%m-%d_%Hh%Mm%Ss_%N)
+        echo $NOW $WorldServer_Bin stopped, restarting! | tee -a $RestarterLogs_Dir/$Script_Name-$WorldServer_Bin.log
+        pid=`ps ax | awk '($5 ~ /$WorldServer_Bin/) { print $1 }'`
+        wait $pid
+        sleep 3
+    done
+}
+
+startservers()
+{
 # screen needs its initialisation file, if it does not exist, it will be created here:
-if [[ ! -e /$SCRIPT_DIR/.screenrc ]]; then
-cat > /$SCRIPT_DIR/.screenrc << "EOF"
+    if [[ ! -e /$Script_Dir/.screenrc ]]; then
+        cat > /$Script_Dir/.screenrc << "EOF"
 # An alternative hardstatus to display a bar at the bottom listing the
 # windownames and highlighting the current windowname in blue. (This is only
 # enabled if there is no hardstatus setting for your terminal)
@@ -115,55 +133,71 @@ hardstatus on
 hardstatus alwayslastline
 hardstatus string "%{.bW}%-w%{.rW}%n %t%{-}%+w %=%{..G} %H %{..Y} %m/%d %c "
 EOF
-fi
+    fi
 
-# the subroutines:
-loginserver-restarter()
-{
-    while I=*
-    do
-        sudo -u $RUNAS_USER $LOGINSERVER_DIR/$LOGINSERVER_BIN
-        NOW=$(date +%Y-%m-%d_%Hh%Mm%Ss_%N)
-        echo $NOW $LOGINSERVER_BIN stopped, restarting! | tee -a $RESTARTERLOGS_DIR/$SCRIPT_NAME-$LOGINSERVER_BIN.log
-        pid=`ps ax | awk '($5 ~ /$LOGINSERVER_BIN/) { print $1 }'`
-        wait $pid
-        sleep 3
-    done
-}
-
-worldserver-restarter()
-{
-    while I=*
-    do
-        sudo -u $RUNAS_USER $WORLDSERVER_DIR/$WORLDSERVER_BIN
-        NOW=$(date +%Y-%m-%d_%Hh%Mm%Ss_%N)
-        echo $NOW $WORLDSERVER_BIN stopped, restarting! | tee -a $RESTARTERLOGS_DIR/$SCRIPT_NAME-$WORLDSERVER_BIN.log
-        pid=`ps ax | awk '($5 ~ /$WORLDSERVER_BIN/) { print $1 }'`
-        wait $pid
-        sleep 3
-    done
-}
-
-startservers()
-{
-    if [ "$(screen -ls | grep $SCREEN_NAME)" ]
+# Does the RunAs_User exist?
+    if [ ! -n "$RunAs_User" ]
     then
-        echo $SCREEN_NAME is already running
+        echo " "
+        echo " The setting for RunAs_User is left empty. "
+        echo " Therefore $Script_Name can not function."
+        checksettings
+        exit 1
     else
-        echo "Starting $SCREEN_NAME"
-        screen -c $SCRIPT_DIR/.screenrc -dmS $SCREEN_NAME -t [Tasks]
+        if !  id -u "$RunAs_User" >/dev/null 2>&1
+        then
+            clear
+            echo " "
+            echo " RunAs_User $RunAs_User does not exist!"
+            checksettings
+            exit 1
+        fi
+    fi
+
+# Check if the commands can be found:
+    if ! command -v $LoginServer_Dir/$LoginServer_Bin &> /dev/null
+    then
+        clear
+        echo " "
+        echo " The LoginServer_Bin $LoginServer_Bin could not be found in LoginServer_Dir $LoginServer_Dir"
+        checksettings
+    exit 1
+    fi
+    if ! command -v $WorldServer_Dir/$WorldServer_Bin &> /dev/null
+    then
+        clear
+        echo " "
+        echo " The WorldServer_Bin $WorldServer_Bin could not be found in WorldServer_Dir $WorldServer_Dir"
+        checksettings
+        exit 1
+    fi
+    if ! command -v screen &> /dev/null
+    then
+        clear
+        echo " "
+        echo "The Program screen could not be found."
+        echo "Please install screen"
+        echo "https://en.wikipedia.org/wiki/GNU_Screen"
+        exit 1
+    fi
+    if [ "$(screen -ls | grep $Screen_Name)" ]
+    then
+        echo " The screen called $Screen_Name is already running"
+    else
+        echo " Starting $Screen_Name"
+        screen -c $Script_Dir/.screenrc -dmS $Screen_Name -t [Tasks]
         sleep 0.5
-        screen -S $SCREEN_NAME -p 0 -X stuff "top -u $RUNAS_USER \n"
+        screen -S $Screen_Name -p 0 -X stuff "top -u $RunAs_User \n"
         sleep 0.5
-        screen -S $SCREEN_NAME -X screen -t [$LOGINSERVER_TITLE]
+        screen -S $Screen_Name -X screen -t [$LoginServer_Title]
         sleep 0.5
-        screen -S $SCREEN_NAME -p 1 -X stuff "cd $LOGINSERVER_DIR\n"
-        screen -S $SCREEN_NAME -p 1 -X stuff "$SCRIPT_FULLPATH loginserverstart\n"
+        screen -S $Screen_Name -p 1 -X stuff "cd $LoginServer_Dir\n"
+        screen -S $Screen_Name -p 1 -X stuff "$Script_FullPath loginserverstart\n"
         sleep 0.5
-        screen -S $SCREEN_NAME -X screen -t [$WORLDSERVER_TITLE]
+        screen -S $Screen_Name -X screen -t [$WorldServer_Title]
         sleep 0.5
-        screen -S $SCREEN_NAME -p 2 -X stuff "cd $WORLDSERVER_DIR\n"
-        screen -S $SCREEN_NAME -p 2 -X stuff "$SCRIPT_FULLPATH worldserverstart\n"
+        screen -S $Screen_Name -p 2 -X stuff "cd $WorldServer_Dir\n"
+        screen -S $Screen_Name -p 2 -X stuff "$Script_FullPath worldserverstart\n"
         sleep 0.5
         usage
     fi
@@ -171,87 +205,86 @@ startservers()
 
 stopservers()
 {
-    if [ ! "$(screen -ls | grep $SCREEN_NAME)" ]
+    if [ ! "$(screen -ls | grep $Screen_Name)" ]
     then
-        echo There is no $SCREEN_NAME running
+        echo There is no $Screen_Name running
     else
-        echo "Stopping $SCREEN_NAME"
-        screen -S $SCREEN_NAME -X stuff "saveall$(printf \\r)"
-        echo "Wait 5 sec. to save all players."
+        echo " Stopping $Screen_Name"
+        screen -S $Screen_Name -X stuff "saveall$(printf \\r)"
+        echo " Wait 5 sec. to save all players."
         sleep 5
-        pkill $LOGINSERVER_BIN
-        pkill $WORLDSERVER_BIN
-        ps -ef | grep $SCREEN_NAME | grep -v grep | awk '{print $2}'| xargs kill
-        echo $SCREEN_NAME" Terminated"
+        pkill $LoginServer_Bin
+        pkill $WorldServer_Bin
+        ps -ef | grep $Screen_Name | grep -v grep | awk '{print $2}'| xargs kill
+        echo " The screen $Screen_Name has been terminated"
     fi
 }
 
+
 databasesbackup()
 {
+    if [ -z "$DatabaseBackups_Dir" ]
+    then
+        echo " "
+        echo " The setting for DatabaseBackups_Dir is left empty. "
+        echo " Therefore $Script_Name will not create any backups."
+        checksettings
+        exit 1
+    fi
+    if [ ! -d "$DatabaseBackups_Dir" ]
+    then
+        echo " "
+        echo " The directory $DatabaseBackups_Dir does not exist"
+        checksettings
+        exit 1
+    fi
+    if ! command -v mysqldump &> /dev/null
+    then
+        clear
+        echo " "
+        echo " The Program mysqldump could not be found."
+        echo " It is needed to make backups."
+        echo " Please install mysqldump."
+        echo " https://mysqldump.guru/how-to-install-and-run-mysqldump.html"
+        echo " Then run sudo $Script_FullPath backup again when ready."
+        echo " "
+        exit 1
+    fi
     checkdbserver
     checkworldserver
-    BACKUP_TIME=$(date +%Y%m%d_%Hh%M)
-    echo " Starting the $BACKUP_TIME backup..."
-    if [[ $CHARACTERS == "1" ]]
-    then
-        /usr/bin/mysqldump --user=$DATABASEUSER --password=$DATABASEPASSWORD \
-             characters --single-transaction --quick --lock-tables=false \
-             > $DATABASEBACKUPS_DIR/$(hostname)_characters_bu-$BACKUP_TIME.sql
-        if [[ ! -e $DATABASEBACKUPS_DIR/$(hostname)_characters_bu-$BACKUP_TIME.sql ]]
-        then
-            clear
-            echo " For some reason (disk full?) $DATABASEBACKUPS_DIR/$(hostname)_characters_bu-$BACKUP_TIME.sql could not be created."
-            echo " Please check and then run sudo $SCRIPT_FULLPATH backup again."
-            exit 1
-        fi
-        echo " Created $DATABASEBACKUPS_DIR/$(hostname)_characters_bu-$BACKUP_TIME.sql"
+    User_Exists="$(mysql -uroot -sse "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = '$DatabaseUser')")"
+    if [ ! "$User_Exists" = 1 ]; then
+        echo " The setting for DatabaseUser is not a valid user! "
+        checksettings
+        exit 1
     fi
-
-    if [[ $LOGS == "1" ]]
-    then
-        /usr/bin/mysqldump --user=$DATABASEUSER --password=$DATABASEPASSWORD \
-            logs --single-transaction --quick --lock-tables=false \
-            > $DATABASEBACKUPS_DIR/$(hostname)_logs_______bu_$BACKUP_TIME.sql
-        if [[ ! -e $DATABASEBACKUPS_DIR/$(hostname)_logs_______bu_$BACKUP_TIME.sql ]]
+    Backup_Time=$(date +%Y%m%d_%Hh%M)
+    echo " Starting the $Backup_Time backup..."
+    for s in characters logs realmd mangos
+    do
+        if [[ ${!s} == "1" ]]
         then
-            clear
-            echo " For some reason (disk full?) $DATABASEBACKUPS_DIR/$(hostname)_logs_______bu_$BACKUP_TIME.sql could not be created."
-            echo " Please check and then run sudo $SCRIPT_FULLPATH backup again."
-            exit 1
+            BackupFileName=$DatabaseBackups_Dir/$(hostname)_$( printf %-10s ${s} | tr ' ' _)_bu-$Backup_Time.sql
+            /usr/bin/mysqldump --user=$DatabaseUser --password=$DatabasePassword \
+                 ${s} --single-transaction --quick --lock-tables=false > $BackupFileName 
+            if [[ ! $? -eq 0 ]];
+            then
+                echo >&2 " "
+                echo " $Backup_Time ${s}-DB backup failed."  | tee -a $RestarterLogs_Dir/$Script_Name-backups.log
+                exit 1
+            fi
+            if [[ ! -e $BackupFileName ]]
+            then
+                clear
+                echo " For some reason (disk full?) $BackupFileName could not be created."
+                echo " Please check and then run sudo $Script_FullPath backup again."
+                echo " $BackupFileName could not be created."  | tee -a $RestarterLogs_Dir/$Script_Name-backups.log
+                exit 1
+            fi
+            echo " Created $BackupFileName ." | tee -a $RestarterLogs_Dir/$Script_Name-backups.log
         fi
-        echo " Created $DATABASEBACKUPS_DIR/$(hostname)_logs_______bu_$BACKUP_TIME.sql"
-    fi
-
-    if [[ $REALMD == "1" ]]
-    then
-        /usr/bin/mysqldump --user=$DATABASEUSER --password=$DATABASEPASSWORD \
-            realmd --single-transaction --quick --lock-tables=false \
-            > $DATABASEBACKUPS_DIR/$(hostname)_realmd_____bu_$BACKUP_TIME.sql
-        if [[ ! -e $DATABASEBACKUPS_DIR/$(hostname)_realmd_____bu_$BACKUP_TIME.sql ]]
-        then
-            clear
-            echo " For some reason (disk full?) $DATABASEBACKUPS_DIR/$(hostname)_realmd_____bu_$BACKUP_TIME.sql could not be created."
-            echo " Please check and then run sudo $SCRIPT_FULLPATH backup again."
-            exit 1
-        fi
-        echo " Created $DATABASEBACKUPS_DIR/$(hostname)_realmd_____bu_$BACKUP_TIME.sql"
-    fi
-
-    if [[ $MANGOS = "1" ]]
-    then
-        /usr/bin/mysqldump --user=$DATABASEUSER --password=$DATABASEPASSWORD \
-            mangos --single-transaction --quick --lock-tables=false \
-            > $DATABASEBACKUPS_DIR/$(hostname)_mangos_____bu_$BACKUP_TIME.sql
-        if [[ ! -e $DATABASEBACKUPS_DIR/$(hostname)_mangos_____bu_$BACKUP_TIME.sql ]]
-        then
-            clear
-            echo " For some reason (disk full?) $DATABASEBACKUPS_DIR/$(hostname)_mangos_____bu_$BACKUP_TIME.sql could not be created."
-            echo " Please check and then run sudo $SCRIPT_FULLPATH backup again."
-            exit 1
-        fi
-        echo " Created $DATABASEBACKUPS_DIR/$(hostname)_mangos_____bu_$BACKUP_TIME.sql"
-    fi
-    echo " The $BACKUP_TIME Backup has finished!"
+    done
+    echo " The $Backup_Time Backup has finished!"
 }
 
 checkservers()
@@ -264,59 +297,86 @@ checkservers()
 usage()
 {
     echo " "
-    echo "Type: wowadmin or screen -r "$SCREEN_NAME
-    echo "to access the screens where "$LOGINSERVER_BIN" and "$WORLDSERVER_BIN" are running"
+    echo "Type: wowadmin or screen -r "$Screen_Name
+    echo "to access the screens where "$LoginServer_Bin" and "$WorldServer_Bin" are running"
     echo " "
     echo "Type [Ctrl] + a , 0 to switch to the task-window, use k to kill a process."
-    echo "Type [Ctrl] + a , 1 to switch to the "$LOGINSERVER_TITLE"-window."
-    echo "Type [Ctrl] + a , 2 to switch to the "$WORLDSERVER_TITLE"-window."
+    echo "Type [Ctrl] + a , 1 to switch to the "$LoginServer_Title"-window."
+    echo "Type [Ctrl] + a , 2 to switch to the "$WorldServer_Title"-window."
     echo "Type [Ctrl] + a , d to detach the screen while keeping the servers running."
     echo " "
 }
 
 checkdbserver()
 {
-    echo Checking $DATABASESERVER
-    i=`ps -eaf | grep -i $DATABASESERVER |sed '/^$/d' | wc -l`
+    if [ -z "$DatabaseServer" ]
+    then
+        echo " "
+        echo " The setting for DatabaseServer is left empty. "
+        echo " Therefore $Script_Name can not check the DatabaseServer."
+    else
+        if ! command -v $DatabaseServer &> /dev/null
+        then
+            #clear
+            echo " "
+            echo " The DatabaseServer $DatabaseServer could not be found."
+            checksettings
+            exit 1
+        fi
+        echo " Checking DatabaseServer $DatabaseServer"
+        i=`ps -eaf | grep -i $DatabaseServer |sed '/^$/d' | wc -l`
         if ! [[ $i > 1 ]]
         then
-            echo "=>$DATABASESERVER is not running!"
+            echo "=>$DatabaseServer is not running!"
             exit 1
-# you can have the database server started by un-commenting the following lines:
-#            echo "Starting "$DATABASESERVER
-#            service $DATABASESERVER start
-#            sleep 10
         else
-            echo "=>$DATABASESERVER is running."
+            echo "=>$DatabaseServer is running."
         fi
+    fi
 }
 
 checkloginserver()
 {
-    echo Checking $LOGINSERVER_BIN
-    i=`ps -eaf | grep -i $LOGINSERVER_BIN |sed '/^$/d' | wc -l`
+    echo Checking $LoginServer_Bin
+    i=`ps -eaf | grep -i $LoginServer_Bin |sed '/^$/d' | wc -l`
         if  [[ $i > 1 ]]
         then
-            echo "=>$LOGINSERVER_BIN is running."
+            echo "=>$LoginServer_Bin is running."
         else
-            echo "=>$LOGINSERVER_BIN is not running."
+            echo "=>$LoginServer_Bin is not running."
         fi
 }
 
 checkworldserver()
 {
-    echo Checking $WORLDSERVER_BIN
-    i=`ps -eaf | grep -i $WORLDSERVER_BIN |sed '/^$/d' | wc -l`
+    echo Checking $WorldServer_Bin
+    i=`ps -eaf | grep -i $WorldServer_Bin |sed '/^$/d' | wc -l`
         if  [[ $i > 1 ]]
         then
-            echo "=>$WORLDSERVER_BIN is running, wait to save players."
+            echo "=>$WorldServer_Bin is running, wait to save players."
             echo "Saving players... "
-            screen -S $SCREEN_NAME -p 2 -X stuff "saveall\n"
+            screen -S $Screen_Name -p 2 -X stuff "saveall\n"
             sleep 5
         else
-            echo "=>$WORLDSERVER_BIN is not running."
+            echo "=>$WorldServer_Bin is not running."
         fi
 }
+
+if [ ! -n "$RestarterLogs_Dir" ]
+then
+    echo " "
+    echo " The setting for RestarterLogs_Dir is left empty. "
+    echo " Therefore $Script_Name will not create any logs."
+    echo " "
+else
+    if [ ! -d "$RestarterLogs_Dir" ]
+    then
+        echo " "
+        echo " The RestarterLogs_Dir $RestarterLogs_Dir does not exist."
+        checksettings
+       exit
+    fi
+fi
 
 # the script-options:
 case "$1" in
@@ -327,7 +387,7 @@ case "$1" in
         worldserver-restarter
     ;;
     start)
-        checkdbserver
+#        checkdbserver
         startservers
     ;;
     restart)
@@ -347,7 +407,7 @@ case "$1" in
     ;;
     *)
         echo " Valid options:"
-        echo " $SCRIPT_FULLPATH start|restart|stop|status|backup "
+        echo " $Script_FullPath start|restart|stop|status|backup "
         usage
         screen -list
         echo " "
@@ -358,14 +418,14 @@ case "$1" in
             echo " "
         exit 0
         fi
-        screen -r $SCREEN_NAME
+        screen -r $Screen_Name
         if [ $? = 1 ]
         then
-            echo " Start $SCREEN_NAME with $SCRIPT_FULLPATH start"
+            echo " Start $Screen_Name with $Script_FullPath start"
             echo " "
             exit 1
         fi
-        echo " Have a nice day!"
+        echo " (still running...) See ya later!"
         echo " "
     ;;
 esac
